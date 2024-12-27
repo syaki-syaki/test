@@ -1,0 +1,19 @@
+sasakitest/
+├── app/
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/com/example/sasakitest/
+│   │   │   │   ├── MainActivity.kt
+│   │   │   │   ├── RepositoryListActivity.kt
+│   │   │   │   ├── IssueListActivity.kt
+│   │   │   │   ├── CreateIssueActivity.kt
+│   │   │   │   ├── GitHubApiService.kt
+│   │   │   ├── res/
+│   │   │   │   ├── layout/
+│   │   │   │   │   ├── activity_main.xml
+│   │   │   │   │   ├── activity_repository_list.xml
+│   │   │   │   │   ├── activity_issue_list.xml
+│   │   │   │   │   ├── activity_create_issue.xml
+│   │   │   ├── AndroidManifest.xml
+│   ├── build.gradle
+├── README.md

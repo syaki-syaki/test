@@ -1,0 +1,17 @@
+<resources>
+<string name="app_name">Sasakitest</string>
+<string name="error_message">Error: %1$s</string>
+    <string name="repository_list_hint">リポジトリ一覧がここに表示されます</string>
+    <string name="hint_issue_title">Issueのタイトルを入力</string>
+    <string name="hint_issue_body">Issueの内容を入力</string>
+    <string name="button_create_issue">Issueを作成</string>
+        <string name="search_hint">リポジトリを検索</string>
+        <string name="search_button">検索</string>
+    <string name="token_hint">GitHub Personal Access Token</string>
+    <string name="save_token_button">Save Token</string>
+    <string name="next_page_button">次のページ</string>
+    <string name="issue_title_hint">Issueのタイトル</string>
+    <string name="issue_body_hint">Issueの内容</string>
+    <string name="create_issue_button">Issueを作成</string>
+</resources>
+
