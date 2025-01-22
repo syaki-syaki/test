@@ -1,7 +1,9 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.android") version "1.9.0"
+    id("kotlin-parcelize")
 }
+
 
 android {
     namespace = "com.example.sasakitest"
@@ -34,19 +36,25 @@ android {
     }
 }
 
+
+
 dependencies {
     // OkHttpライブラリ
-    implementation ("com.squareup.okhttp3:okhttp:4.10.0")
+    implementation("com.squareup.okhttp3:okhttp:4.10.0")
     // Androidライブラリ
-    implementation("androidx.core:core-ktx:1.15.0")                // 最新バージョンに更新
-    implementation("androidx.appcompat:appcompat:1.7.0")   // 最新バージョンに更新
-    implementation("com.google.android.material:material:1.12.0")  // 最新バージョンに更新
-    implementation("androidx.constraintlayout:constraintlayout:2.2.0")  // 最新バージョンに更新
-    implementation("com.google.code.gson:gson:2.10.1")             // 最新バージョンに更新
-    implementation ( "com.google.code.gson:gson:2.9.0")
+
+    implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("com.google.android.material:material:1.12.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.2.0")
+    // Gsonライブラリ
+    implementation("com.google.code.gson:gson:2.10.1")
     // テスト用ライブラリ
     testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
 
-    androidTestImplementation("androidx.test.ext:junit:1.2.1")     // 最新バージョンに更新
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")  // 最新バージョンに更新
+    implementation ("androidx.core:core-splashscreen:1.0.1")
+
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.0") // 使用中のKotlinバージョンに一致させる
 }

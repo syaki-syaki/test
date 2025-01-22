@@ -5,74 +5,132 @@
 
 package com.example.sasakitest
 
-import com.google.gson.Gson // JSONデータをオブジェクトに変換するためのライブラリ
-import okhttp3.MediaType.Companion.toMediaType // リクエストの内容の形式を指定するためのツール
-import okhttp3.OkHttpClient // HTTP通信をするためのクライアント
-import okhttp3.Request // HTTPリクエストを作るためのクラス
-import okhttp3.RequestBody.Companion.toRequestBody // リクエストの本文を簡単に作成するユーティリティ
-import com.example.sasakitest.model.Issue // GitHubのイシュー（課題）データを扱うクラス
-import com.example.sasakitest.model.RepositoryResponse // リポジトリ検索結果のデータを扱うクラス
+import android.content.Context
 import android.util.Log
-
+import com.example.sasakitest.model.Issue
+import com.example.sasakitest.model.RepositoryResponse
+import com.google.gson.Gson
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 // GitHub APIを操作するためのサービス
 object GitHubApiService {
-    private const val BASE_URL = "https://api.github.com" // GitHub APIの基本となるURL
+    private const val BASE_URL = "https://api.github.com"
+    private val client = OkHttpClient()
 
-    private val client = OkHttpClient() // HTTP通信を実行するためのクライアントを作成
+    // トークン取得
+    private fun getToken(context: Context): String {
+        val sharedPreferences = context.getSharedPreferences("GitHubPrefs", Context.MODE_PRIVATE)
+        val token = sharedPreferences.getString("GitHubToken", "") ?: ""
+        Log.d("GitHubApiService", "Retrieved token: $token")
+        if (token.isEmpty()) {
+            throw IllegalStateException("GitHub Token is not set")
+        }
+        return token
+    }
 
-    // リポジトリを検索するメソッド（ページング対応）
-    fun searchRepositories(query: String, token: String, page: Int): Pair<RepositoryResponse, Boolean> {
+    // コメントを編集する
+    fun editComment(context: Context, repositoryName: String, commentId: Int, newBody: String) {
+        val token = getToken(context)
+        val url = "$BASE_URL/repos/$repositoryName/issues/comments/$commentId"
+        val json = """{ "body": "$newBody" }"""
+        val requestBody = json.toRequestBody("application/json".toMediaType())
+        val request = Request.Builder()
+            .url(url)
+            .addHeader("Authorization", "Bearer $token")
+            .patch(requestBody)
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw Exception("Failed to edit comment: ${response.code}")
+            }
+        }
+    }
+
+    // コメントを削除する
+    fun deleteComment(context: Context, repositoryName: String, commentId: Int) {
+        val token = getToken(context)
+        val url = "$BASE_URL/repos/$repositoryName/issues/comments/$commentId"
+        val request = Request.Builder()
+            .url(url)
+            .addHeader("Authorization", "Bearer $token")
+            .delete()
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw Exception("Failed to delete comment: ${response.code}")
+            }
+        }
+    }
+
+
+    fun searchRepositories(context: Context, query: String, page: Int): Pair<RepositoryResponse, Boolean> {
+        val token = getToken(context)
         val url = "$BASE_URL/search/repositories?q=$query&page=$page&per_page=25"
         val request = Request.Builder()
             .url(url)
             .addHeader("Authorization", "Bearer $token")
             .build()
 
+        Log.d("GitHubApiService", "API Request URL: $url")
+
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                throw Exception("APIリクエストが失敗しました: ${response.code}")
+                throw Exception("API request failed: ${response.code}")
             }
-
-            val body = response.body?.string() ?: throw Exception("レスポンスが空です")
-            Log.d("GitHubApiService", "Raw API Response: $body")
-
+            val body = response.body?.string() ?: throw Exception("Empty response")
             val hasNextPage = response.headers["Link"]?.contains("rel=\"next\"") ?: false
             return Pair(Gson().fromJson(body, RepositoryResponse::class.java), hasNextPage)
         }
     }
 
-    // イシュー（課題）を取得するメソッド（ページング対応）
-    fun getIssues(repositoryName: String, token: String, page: Int, perPage: Int): List<Issue> {
-        val url = "$BASE_URL/repos/$repositoryName/issues?per_page=$perPage&page=$page" // イシュー取得用のURL
-        val request = Request.Builder() // リクエストの設定を開始
-            .url(url) // URLを設定
-            .addHeader("Authorization", "Bearer $token") // 認証用トークンをヘッダーに追加
-            .build() // リクエストを完成
 
-        client.newCall(request).execute().use { response -> // リクエストを送ってレスポンスを取得
-            if (!response.isSuccessful) { // レスポンスが成功でない場合
-                throw Exception("Failed to fetch issues: ${response.code}") // エラーを投げる
+    // イシュー（課題）を取得するメソッド（ページング対応）
+    fun getIssues(context: Context, repositoryName: String, page: Int, perPage: Int): List<Issue> {
+        val token = getToken(context)
+        val url = "$BASE_URL/repos/$repositoryName/issues?per_page=$perPage&page=$page"
+        val request = Request.Builder()
+            .url(url)
+            .addHeader("Authorization", "Bearer $token")
+            .build()
+
+        Log.d("GitHubApiService", "Fetching issues with URL: $url for repository: $repositoryName")
+
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw Exception("Failed to fetch issues: ${response.code}")
             }
-            val body = response.body?.string() ?: throw Exception("Empty response") // レスポンス本文を取得
-            return Gson().fromJson(body, Array<Issue>::class.java).toList() // JSONをオブジェクトリストに変換して返す
+            val body = response.body?.string() ?: throw Exception("Empty response")
+            return Gson().fromJson(body, Array<Issue>::class.java).toList()
         }
     }
 
-    // 新しいイシューを作成するメソッド
-    fun createIssue(repositoryName: String, token: String, title: String, body: String) {
-        val url = "$BASE_URL/repos/$repositoryName/issues" // 新規イシュー作成用のURL
-        val json = """{ "title": "$title", "body": "$body" }""" // イシュー作成用のJSONデータ
-        val requestBody = json.toRequestBody("application/json".toMediaType()) // リクエスト本文を設定
-        val request = Request.Builder() // リクエストの設定を開始
-            .url(url) // URLを設定
-            .addHeader("Authorization", "Bearer $token") // 認証用トークンをヘッダーに追加
-            .post(requestBody) // POSTリクエストとして設定
-            .build() // リクエストを完成
+// 新しいイシューを作成するメソッド
+fun createIssue(context: Context, repositoryName: String, title: String, body: String) {
+    val token = getToken(context) // context を使ってトークンを取得
+    val url = "$BASE_URL/repos/$repositoryName/issues"
+    val json = """{ "title": "$title", "body": "$body" }"""
+    val requestBody = json.toRequestBody("application/json".toMediaType())
+    val request = Request.Builder()
+        .url(url)
+        .addHeader("Authorization", "Bearer $token")
+        .post(requestBody)
+        .build()
 
-        client.newCall(request).execute().use { response -> // リクエストを送ってレスポンスを取得
-            if (!response.isSuccessful) { // レスポンスが成功でない場合
-                throw Exception("Failed to create issue: ${response.code}") // エラーを投げる
-            }
+    client.newCall(request).execute().use { response ->
+        if (!response.isSuccessful) {
+            throw Exception("Failed to create issue: ${response.code}")
         }
     }
 }
+
+
+
+}
+
+
+
+

@@ -3,7 +3,16 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:paddingTop="24dp"
     android:padding="16dp">
+    <!-- res/layout/activity_main.xml -->
+
+    <!-- 検索クエリ入力 -->
+    <EditText
+        android:id="@+id/queryEditText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="検索キーワードを入力" />
 
     <EditText
         android:id="@+id/searchBox"
@@ -13,6 +22,15 @@
         android:inputType="text"
         android:padding="8dp"
         android:autofillHints="username" />
+
+    <EditText
+        android:id="@+id/starsEditText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="最低スター数を入力"
+        android:inputType="number"
+        android:layout_marginBottom="16dp" />
+
 
     <Button
         android:id="@+id/searchButton"

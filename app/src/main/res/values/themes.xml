@@ -5,5 +5,8 @@
         <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
     </style>
 
+    <string name="hint_github_token">GitHub Personal Access Token</string>
+    <string name="button_save_token">Save Token</string>
+
     <style name="Theme.Sasakitest" parent="Base.Theme.Sasakitest" />
 </resources>

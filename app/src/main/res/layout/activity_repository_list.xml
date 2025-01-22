@@ -1,10 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- res/layout/activity_repository_list.xml -->
-
-<androidx.recyclerview.widget.RecyclerView
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/recyclerView"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp" />
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <!-- RecyclerView: リポジトリリスト -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="8dp" />
+
+    <!-- ボタンエリア -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:paddingTop="8dp">
+
+        <!-- 前のページボタン -->
+        <Button
+            android:id="@+id/prevPageButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="前のページ"
+            android:enabled="false" />
+
+        <!-- 次のページボタン -->
+        <Button
+            android:id="@+id/nextPageButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="次のページ"
+            android:layout_marginStart="16dp"
+            android:enabled="false" />
+    </LinearLayout>
+</LinearLayout>
 

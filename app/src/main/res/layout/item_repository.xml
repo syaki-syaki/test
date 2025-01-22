@@ -1,35 +1,50 @@
-<!-- res/layout/item_repository.xml -->
-<TableLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:stretchColumns="1"
-    android:padding="8dp"
-    android:background="@android:color/darker_gray">
+    android:orientation="vertical"
+    android:padding="16dp">
 
-    <TableRow
+    <!-- リポジトリ名 -->
+    <TextView
+        android:id="@+id/repositoryName"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="4dp">
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="@color/black" />
 
-        <TextView
-            android:id="@+id/repositoryName"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:gravity="center"
-            android:background="@android:color/white"
-            android:padding="8dp" />
+    <!-- 仕切り線 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/light_gray"
+        android:layout_marginVertical="8dp" />
 
-        <TextView
-            android:id="@+id/repositoryDescription"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="2"
-            android:textSize="14sp"
-            android:gravity="center_vertical"
-            android:background="@android:color/white"
-            android:padding="8dp" />
-    </TableRow>
-</TableLayout>
+    <!-- リポジトリ説明 -->
+    <TextView
+        android:id="@+id/repositoryDescription"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:textColor="@color/gray" />
+
+    <!-- リポジトリオーナー -->
+    <TextView
+        android:id="@+id/repositoryOwner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:textColor="@android:color/holo_blue_dark"
+        android:paddingBottom="4dp" />
+
+    <!-- リポジトリ間の点線 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@drawable/dotted_line"
+        android:layout_marginTop="16dp" />
+</LinearLayout>
+
+
+

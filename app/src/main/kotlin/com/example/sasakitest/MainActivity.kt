@@ -8,30 +8,30 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
+    // UI要素
+    private lateinit var searchButton: Button
+    private lateinit var queryEditText: EditText
+    private lateinit var starsEditText: EditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // 検索クエリ入力用のEditTextを取得
-        val searchBox = findViewById<EditText>(R.id.searchBox)
-        // 検索ボタンを取得
-        val searchButton = findViewById<Button>(R.id.searchButton)
+        searchButton = findViewById(R.id.searchButton)
+        queryEditText = findViewById(R.id.queryEditText)
+        starsEditText = findViewById(R.id.starsEditText)
 
         searchButton.setOnClickListener {
-            val query = searchBox.text.toString().trim()
-
-            if (query.isEmpty()) {
-                Toast.makeText(this, "検索クエリを入力してください", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
+            val query = queryEditText.text.toString()
+            val stars = starsEditText.text.toString().toIntOrNull() ?: 0
+            if (query.isNotEmpty()) {
+                val intent = Intent(this, RepositoryListActivity::class.java)
+                intent.putExtra("query", query)
+                intent.putExtra("stars", stars)
+                startActivity(intent)
+            } else {
+                Toast.makeText(this, "検索キーワードを入力してください", Toast.LENGTH_SHORT).show()
             }
-
-            // RepositoryListActivity に遷移
-            val intent = Intent(this, RepositoryListActivity::class.java)
-            intent.putExtra("query", query)
-            startActivity(intent)
         }
     }
 }
-
-

@@ -13,5 +13,10 @@
     <string name="issue_title_hint">Issueのタイトル</string>
     <string name="issue_body_hint">Issueの内容</string>
     <string name="create_issue_button">Issueを作成</string>
+
+        <string name="owner_text">Owner: %s</string>
+        <string name="no_description">No Description</string>
+
+
 </resources>
 

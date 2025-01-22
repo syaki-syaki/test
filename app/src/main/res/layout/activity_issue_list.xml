@@ -1,7 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.recyclerview.widget.RecyclerView
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/recyclerView"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp" />
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <!-- RecyclerView -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- ページナビゲーション -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <Button
+            android:id="@+id/prevPageButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="前のページへ"
+            android:visibility="gone"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/nextPageButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="次のページへ"
+            android:visibility="gone" />
+    </LinearLayout>
+
+
+
+
+    <!-- 「新規Issue作成」ボタン -->
+    <Button
+        android:id="@+id/createIssueButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="新規Issueを作成"
+        android:layout_marginTop="8dp" />
+
+
+<!-- コメント編集ボタン -->
+<Button
+    android:id="@+id/editCommentButton"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="編集" />
+
+<!-- コメント削除ボタン -->
+<Button
+    android:id="@+id/deleteCommentButton"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="削除"
+    android:layout_marginStart="16dp" />
+</LinearLayout>

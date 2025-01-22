@@ -1,22 +1,46 @@
-<!-- res/layout/item_issue.xml -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="16dp">
 
+    <!-- イシュータイトル -->
     <TextView
         android:id="@+id/issueTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:textSize="18sp"
         android:textStyle="bold"
-        android:textSize="16sp" />
+        android:paddingBottom="8dp"
+        android:textColor="@android:color/black" />
 
     <TextView
         android:id="@+id/issueBody"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="14sp"
-        android:paddingTop="4dp" />
-</LinearLayout>
+        android:text="Issue body" />
 
+
+    <!-- 仕切り線 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/light_gray"
+        android:layout_marginBottom="8dp" />
+
+    <!-- 編集ボタン -->
+    <Button
+        android:id="@+id/editCommentButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="編集" />
+
+    <!-- 削除ボタン -->
+    <Button
+        android:id="@+id/deleteCommentButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="削除"
+        android:layout_marginStart="16dp" />
+</LinearLayout>
