@@ -17,23 +17,29 @@ class RepositoryListActivity : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var nextPageButton: Button
     private lateinit var prevPageButton: Button
+
     private val repositoryAdapter = RepositoryAdapter { repository ->
         // リポジトリクリック時の処理
         val intent = Intent(this, IssueListActivity::class.java).apply {
             putExtra("repositoryName", "${repository.owner.login}/${repository.name}")
+            putExtra("fromActivity", "RepositoryListActivity") // 遷移元を指定
         }
         startActivity(intent)
     }
 
-    private var currentPage = 1
-    private var hasNextPage = true
+
+    private var currentPage = 1 // 現在のページ番号
+    private var hasNextPage = true // 次のページが存在するか
     private lateinit var query: String
+
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_repository_list)
 
-        query = intent.getStringExtra("query") ?: ""
+        val repositoryName = intent.getStringExtra("repositoryName") ?: ""
+        val keyword = intent.getStringExtra("keyword") // キーワードを取得
 
         recyclerView = findViewById(R.id.recyclerView)
         recyclerView.layoutManager = LinearLayoutManager(this)
@@ -42,14 +48,13 @@ class RepositoryListActivity : AppCompatActivity() {
         nextPageButton = findViewById(R.id.nextPageButton)
         prevPageButton = findViewById(R.id.prevPageButton)
 
-        // 最初のデータ読み込み
-        loadRepositories()
+        loadRepositories(repositoryName, keyword)
 
         // 次のページボタン
         nextPageButton.setOnClickListener {
             if (hasNextPage) {
                 currentPage++
-                loadRepositories()
+                loadRepositories(repositoryName, keyword)
             } else {
                 Toast.makeText(this, "次のページはありません", Toast.LENGTH_SHORT).show()
             }
@@ -59,36 +64,50 @@ class RepositoryListActivity : AppCompatActivity() {
         prevPageButton.setOnClickListener {
             if (currentPage > 1) {
                 currentPage--
-                loadRepositories()
+                loadRepositories(repositoryName, keyword)
             } else {
                 Toast.makeText(this, "前のページはありません", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    private fun loadRepositories() {
+    private fun loadRepositories(repositoryName: String, keyword: String?) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val (repositoryResponse, nextPageAvailable) =
-                    GitHubApiService.searchRepositories(this@RepositoryListActivity, query, currentPage)
+                // GitHubApiServiceにリポジトリ名とキーワードを渡して検索
+                val (repositories, nextPageAvailable) = GitHubApiService.searchRepositoriesWithKeyword(
+                    this@RepositoryListActivity,
+                    repositoryName,
+                    keyword,
+                    currentPage // 現在のページ番号を渡す
+                )
                 withContext(Dispatchers.Main) {
-                    if (repositoryResponse.items.isNotEmpty()) {
-                        repositoryAdapter.setRepositories(repositoryResponse.items)
+                    if (repositories.isNotEmpty()) {
+                        repositoryAdapter.setRepositories(repositories)
                         hasNextPage = nextPageAvailable
-                        updateButtons()
+                        updatePagingButtons()
                     } else {
-                        Toast.makeText(this@RepositoryListActivity, "リポジトリが見つかりませんでした", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@RepositoryListActivity,
+                            "該当するリポジトリが見つかりませんでした",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@RepositoryListActivity, "エラー: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@RepositoryListActivity,
+                        "エラー: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
     }
 
-    private fun updateButtons() {
+    private fun updatePagingButtons() {
+        // ボタンの有効/無効を更新
         prevPageButton.isEnabled = currentPage > 1
         nextPageButton.isEnabled = hasNextPage
     }

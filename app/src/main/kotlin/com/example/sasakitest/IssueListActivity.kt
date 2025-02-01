@@ -2,14 +2,16 @@ package com.example.sasakitest
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.sasakitest.adapter.IssueAdapter
-import com.example.sasakitest.model.Issue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -20,17 +22,25 @@ class IssueListActivity : AppCompatActivity() {
     private lateinit var nextPageButton: Button
     private lateinit var prevPageButton: Button
     private lateinit var createIssueButton: Button
-
+    private lateinit var editIssueLauncher: ActivityResultLauncher<Intent>
+    private lateinit var createIssueLauncher: ActivityResultLauncher<Intent>
     private val issueAdapter = IssueAdapter(
         onEdit = { issue ->
-            // コメントの編集処理
-            editComment(issue)
+            Log.d("IssueListActivity", "Edit button clicked for issue Number: ${issue.id}")
+            val intent = Intent(this, EditIssueActivity::class.java)
+            intent.putExtra("issueNumber", issue.id) // Issue番号を渡す
+            intent.putExtra("repositoryName", repositoryName)
+            intent.putExtra("issueTitle", issue.title)
+            intent.putExtra("issueBody", issue.body)
+            editIssueLauncher.launch(intent)
         },
         onDelete = { issue ->
-            // コメントの削除処理
-            deleteComment(issue)
+            Log.d("IssueListActivity", "Delete button clicked for issue Number: ${issue.id}")
+            deleteIssue(issue.id) // `issue.number`を渡す
         }
     )
+
+
 
     private var currentPage = 1
     private var isLoading = false
@@ -40,6 +50,25 @@ class IssueListActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_issue_list)
+
+        // ActivityResultLauncher を初期化
+        editIssueLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                Log.d("IssueListActivity", "Issue edited successfully.")
+                loadIssues(repositoryName) // イシューを再読み込み
+            } else {
+                Log.d("IssueListActivity", "Issue editing was canceled.")
+            }
+        }
+
+        createIssueLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                Log.d("IssueListActivity", "Issue created successfully.")
+                loadIssues(repositoryName) // イシューを再読み込み
+            } else {
+                Log.d("IssueListActivity", "Issue creation was canceled.")
+            }
+        }
 
         recyclerView = findViewById(R.id.recyclerView)
         recyclerView.layoutManager = LinearLayoutManager(this)
@@ -55,7 +84,7 @@ class IssueListActivity : AppCompatActivity() {
             if (repositoryName.isNotEmpty()) {
                 val intent = Intent(this, CreateIssueActivity::class.java)
                 intent.putExtra("repositoryName", repositoryName)
-                startActivity(intent)
+                createIssueLauncher.launch(intent)
             } else {
                 Toast.makeText(this, "リポジトリ名が無効です", Toast.LENGTH_SHORT).show()
             }
@@ -85,16 +114,27 @@ class IssueListActivity : AppCompatActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val issues = GitHubApiService.getIssues(this@IssueListActivity, repositoryName, currentPage, 25)
+                val issues = GitHubApiService.getIssues(
+                    this@IssueListActivity,
+                    repositoryName,
+                    currentPage,
+                    25
+                )
                 withContext(Dispatchers.Main) {
-                    if (issues.isNotEmpty()) {
-                        issueAdapter.submitList(issues)
-                        hasNextPage = issues.size == 25
-                        nextPageButton.visibility = if (hasNextPage) View.VISIBLE else View.GONE
-                        prevPageButton.visibility = if (currentPage > 1) View.VISIBLE else View.GONE
-                    } else {
-                        hasNextPage = false
-                        Toast.makeText(this@IssueListActivity, "データがありません", Toast.LENGTH_SHORT).show()
+                    issueAdapter.submitList(issues)
+                    hasNextPage = issues.size == 25
+                    nextPageButton.visibility = if (hasNextPage) View.VISIBLE else View.GONE
+                    prevPageButton.visibility = if (currentPage > 1) View.VISIBLE else View.GONE
+
+                    if (issues.isEmpty()) {
+                        Toast.makeText(
+                            this@IssueListActivity,
+                            "イシューがありません。新規作成してください。",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
+                        // 編集・削除ボタンを無効化
+                        issueAdapter.notifyDataSetChanged()
                     }
                     isLoading = false
                 }
@@ -107,37 +147,38 @@ class IssueListActivity : AppCompatActivity() {
         }
     }
 
-    private fun editComment(issue: Issue) {
-        val newCommentBody = "編集後のコメント内容"
+    private fun deleteIssue(issueId: String) { // 修正: Int → String
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                GitHubApiService.editComment(this@IssueListActivity, repositoryName, issue.id.toInt(), newCommentBody)
+                Log.d("IssueListActivity", "Attempting to delete (close) issue with ID: $issueId")
+
+                // GitHub API にリクエストを送信
+                GitHubApiService.deleteIssue(this@IssueListActivity, repositoryName, issueId)
+
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@IssueListActivity, "コメントを編集しました", Toast.LENGTH_SHORT).show()
-                    loadIssues(repositoryName)
+                    issueAdapter.issueList.removeIf { it.id == issueId } // 修正: `number` → `id`
+                    if (issueAdapter.issueList.isEmpty()) {
+                        // リストが空の場合、遷移元に戻る
+                        when (intent.getStringExtra("fromActivity")) {
+                            "RepositoryListActivity" -> startActivity(Intent(this@IssueListActivity, RepositoryListActivity::class.java))
+                            "UserRepositoryListActivity" -> startActivity(Intent(this@IssueListActivity, UserRepositoryListActivity::class.java))
+                            else -> Toast.makeText(this@IssueListActivity, "遷移元が不明です", Toast.LENGTH_SHORT).show()
+                        }
+                        finish() // 現在の画面を終了
+                    } else {
+                        // リストを更新
+                        issueAdapter.notifyDataSetChanged()
+                        Toast.makeText(this@IssueListActivity, "イシューを削除しました", Toast.LENGTH_SHORT).show()
+                    }
                 }
             } catch (e: Exception) {
+                Log.e("IssueListActivity", "Failed to delete issue: ${e.message}")
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@IssueListActivity, "エラー: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@IssueListActivity, "削除に失敗しました: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
 
-    private fun deleteComment(issue: Issue) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                GitHubApiService.deleteComment(this@IssueListActivity, repositoryName, issue.id.toInt())
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@IssueListActivity, "コメントを削除しました", Toast.LENGTH_SHORT).show()
-                    loadIssues(repositoryName)
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@IssueListActivity, "エラー: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-    }
 
 }

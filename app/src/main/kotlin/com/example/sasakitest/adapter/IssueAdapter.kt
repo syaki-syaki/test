@@ -1,6 +1,3 @@
-// このファイルはGitHubのイシュー（課題）をRecyclerViewで表示するためのアダプターを提供します。
-// データの差分を検出してリストを効率的に更新します。
-
 package com.example.sasakitest.adapter
 
 import android.view.LayoutInflater
@@ -17,22 +14,13 @@ class IssueAdapter(
     private val onDelete: (Issue) -> Unit
 ) : RecyclerView.Adapter<IssueAdapter.IssueViewHolder>() {
 
-    private val issueList = mutableListOf<Issue>()
+    val issueList = mutableListOf<Issue>()
 
     fun submitList(issues: List<Issue>) {
-        val oldSize = issueList.size
         issueList.clear()
         issueList.addAll(issues)
-
-        if (oldSize == 0) {
-            notifyItemRangeInserted(0, issues.size) // 初回データセット
-        } else if (issues.isEmpty()) {
-            notifyItemRangeRemoved(0, oldSize) // 全て削除された場合
-        } else {
-            notifyDataSetChanged() // 最後の手段として使用
-        }
+        notifyDataSetChanged()
     }
-
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): IssueViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_issue, parent, false)
@@ -41,7 +29,7 @@ class IssueAdapter(
 
     override fun onBindViewHolder(holder: IssueViewHolder, position: Int) {
         val issue = issueList[position]
-        holder.bind(issue)
+        holder.bind(issue) // `isListEmpty` を渡さないシンプルな呼び出しに修正
     }
 
     override fun getItemCount(): Int = issueList.size
@@ -55,6 +43,11 @@ class IssueAdapter(
         fun bind(issue: Issue) {
             issueTitle.text = issue.title
             issueBody.text = issue.body ?: "No description"
+
+            // ボタンを常に表示する場合
+            editButton.visibility = View.VISIBLE
+            deleteButton.visibility = View.VISIBLE
+
             editButton.setOnClickListener { onEdit(issue) }
             deleteButton.setOnClickListener { onDelete(issue) }
         }

@@ -110,40 +110,40 @@ class IssueListActivity : AppCompatActivity() {
 ##mainactivity
 
 ```kotlin
-
 package com.example.sasakitest
 
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
-
-    companion object {
-        const val EXTRA_QUERY = "query"
-    }
+    // UI要素
+    private lateinit var searchButton: Button
+    private lateinit var queryEditText: EditText
+    private lateinit var starsEditText: EditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val searchBox = findViewById<EditText>(R.id.searchBox)
-        val searchButton = findViewById<Button>(R.id.searchButton)
+        searchButton = findViewById(R.id.searchButton)
+        queryEditText = findViewById(R.id.queryEditText)
+        starsEditText = findViewById(R.id.starsEditText)
 
         searchButton.setOnClickListener {
-            val query = searchBox.text.toString().trim()
-
-            if (query.isBlank() || query.length < 3) {
-                searchBox.error = "有効な検索クエリを入力してください (3文字以上)"
-                return@setOnClickListener
+            val query = queryEditText.text.toString()
+            val stars = starsEditText.text.toString().toIntOrNull() ?: 0
+            if (query.isNotEmpty()) {
+                val intent = Intent(this, RepositoryListActivity::class.java)
+                intent.putExtra("query", query)
+                intent.putExtra("stars", stars)
+                startActivity(intent)
+            } else {
+                Toast.makeText(this, "検索キーワードを入力してください", Toast.LENGTH_SHORT).show()
             }
-
-            val intent = Intent(this, RepositoryListActivity::class.java).apply {
-                putExtra(EXTRA_QUERY, query)
-            }
-            startActivity(intent)
         }
     }
 }
@@ -352,101 +352,121 @@ class IssueAdapter : ListAdapter<Issue, IssueAdapter.IssueViewHolder>(IssueDiffC
 
 ##githubapiservise
 ```kotlin
-
 package com.example.sasakitest
 
-import android.content.Context
-import android.util.Log
-import com.example.sasakitest.model.Issue
-import com.example.sasakitest.model.RepositoryResponse
-import com.google.gson.Gson
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-// GitHub APIを操作するためのサービス
-object GitHubApiService {
-    private const val BASE_URL = "https://api.github.com"
-    private val client = OkHttpClient()
+import android.content.Intent
+import android.os.Bundle
+import android.widget.Button
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.example.sasakitest.adapter.RepositoryAdapter
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-    // トークン取得
-    private fun getToken(context: Context): String {
-        val sharedPreferences = context.getSharedPreferences("GitHubPrefs", Context.MODE_PRIVATE)
-        val token = sharedPreferences.getString("GitHubToken", "") ?: ""
-        Log.d("GitHubApiService", "Retrieved token: $token")
-        if (token.isEmpty()) {
-            throw IllegalStateException("GitHub Token is not set")
+class RepositoryListActivity : AppCompatActivity() {
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var nextPageButton: Button
+    private lateinit var prevPageButton: Button
+
+    private val repositoryAdapter = RepositoryAdapter { repository ->
+        // リポジトリクリック時の処理
+        val intent = Intent(this, IssueListActivity::class.java).apply {
+            putExtra("repositoryName", "${repository.owner.login}/${repository.name}")
+            putExtra("fromActivity", "RepositoryListActivity") // 遷移元を指定
         }
-        return token
+        startActivity(intent)
     }
 
 
-    fun searchRepositories(
-        context: Context,
-        query: String,
-        page: Int
-    ): Pair<RepositoryResponse, Boolean> {
-        val token = getToken(context)
-        val url = "$BASE_URL/search/repositories?q=$query&page=$page&per_page=25"
-        val request = Request.Builder()
-            .url(url)
-            .addHeader("Authorization", "Bearer $token")
-            .build()
+    private var currentPage = 1 // 現在のページ番号
+    private var hasNextPage = true // 次のページが存在するか
+    private lateinit var query: String
 
-        Log.d("GitHubApiService", "API Request URL: $url")
 
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw Exception("API request failed: ${response.code}")
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_repository_list)
+
+        val repositoryName = intent.getStringExtra("repositoryName") ?: ""
+        val keyword = intent.getStringExtra("keyword") // キーワードを取得
+
+        recyclerView = findViewById(R.id.recyclerView)
+        recyclerView.layoutManager = LinearLayoutManager(this)
+        recyclerView.adapter = repositoryAdapter
+
+        nextPageButton = findViewById(R.id.nextPageButton)
+        prevPageButton = findViewById(R.id.prevPageButton)
+
+        loadRepositories(repositoryName, keyword)
+
+        // 次のページボタン
+        nextPageButton.setOnClickListener {
+            if (hasNextPage) {
+                currentPage++
+                loadRepositories(repositoryName, keyword)
+            } else {
+                Toast.makeText(this, "次のページはありません", Toast.LENGTH_SHORT).show()
             }
-            val body = response.body?.string() ?: throw Exception("Empty response")
-            val hasNextPage = response.headers["Link"]?.contains("rel=\"next\"") ?: false
-            return Pair(Gson().fromJson(body, RepositoryResponse::class.java), hasNextPage)
         }
-    }
 
-
-    // イシュー（課題）を取得するメソッド（ページング対応）
-    fun getIssues(context: Context, repositoryName: String, page: Int, perPage: Int): List<Issue> {
-        val token = getToken(context)
-        val url = "$BASE_URL/repos/$repositoryName/issues?per_page=$perPage&page=$page"
-        val request = Request.Builder()
-            .url(url)
-            .addHeader("Authorization", "Bearer $token")
-            .build()
-
-        Log.d("GitHubApiService", "Fetching issues with URL: $url for repository: $repositoryName")
-
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw Exception("Failed to fetch issues: ${response.code}")
-            }
-            val body = response.body?.string() ?: throw Exception("Empty response")
-            return Gson().fromJson(body, Array<Issue>::class.java).toList()
-        }
-    }
-
-    // 新しいイシューを作成するメソッド
-    fun createIssue(context: Context, repositoryName: String, title: String, body: String) {
-        val token = getToken(context) // context を使ってトークンを取得
-        val url = "$BASE_URL/repos/$repositoryName/issues"
-        val json = """{ "title": "$title", "body": "$body" }"""
-        val requestBody = json.toRequestBody("application/json".toMediaType())
-        val request = Request.Builder()
-            .url(url)
-            .addHeader("Authorization", "Bearer $token")
-            .post(requestBody)
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw Exception("Failed to create issue: ${response.code}")
+        // 前のページボタン
+        prevPageButton.setOnClickListener {
+            if (currentPage > 1) {
+                currentPage--
+                loadRepositories(repositoryName, keyword)
+            } else {
+                Toast.makeText(this, "前のページはありません", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
+    private fun loadRepositories(repositoryName: String, keyword: String?) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // GitHubApiServiceにリポジトリ名とキーワードを渡して検索
+                val (repositories, nextPageAvailable) = GitHubApiService.searchRepositoriesWithKeyword(
+                    this@RepositoryListActivity,
+                    repositoryName,
+                    keyword,
+                    currentPage // 現在のページ番号を渡す
+                )
+                withContext(Dispatchers.Main) {
+                    if (repositories.isNotEmpty()) {
+                        repositoryAdapter.setRepositories(repositories)
+                        hasNextPage = nextPageAvailable
+                        updatePagingButtons()
+                    } else {
+                        Toast.makeText(
+                            this@RepositoryListActivity,
+                            "該当するリポジトリが見つかりませんでした",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        this@RepositoryListActivity,
+                        "エラー: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+    }
 
+    private fun updatePagingButtons() {
+        // ボタンの有効/無効を更新
+        prevPageButton.isEnabled = currentPage > 1
+        nextPageButton.isEnabled = hasNextPage
+    }
 }
+
 ```
 ##activityxml
 ```xml

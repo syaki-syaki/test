@@ -9,19 +9,19 @@
 
     <!-- 検索クエリ入力 -->
     <EditText
-        android:id="@+id/queryEditText"
+        android:id="@+id/repositoryNameEditText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="検索キーワードを入力" />
+        android:hint="キーワードを入力"
+        android:inputType="text" />
 
+    <!-- キーワード入力用 EditText -->
     <EditText
-        android:id="@+id/searchBox"
+        android:id="@+id/keywordEditText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="@string/search_hint"
-        android:inputType="text"
-        android:padding="8dp"
-        android:autofillHints="username" />
+        android:hint="リポジトリ名を検索"
+        android:inputType="text" />
 
     <EditText
         android:id="@+id/starsEditText"
@@ -38,5 +38,16 @@
         android:layout_height="wrap_content"
         android:text="@string/search_button"
         android:layout_marginTop="16dp" />
+
+
+
+    <Button
+        android:id="@+id/userRepositoryButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="ユーザー専用リポジトリ検索"
+        android:layout_marginTop="40dp"/>
+
+
 </LinearLayout>
 

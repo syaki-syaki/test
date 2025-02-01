@@ -32,8 +32,10 @@
 
         <!-- RepositoryListActivity: リポジトリ一覧画面 -->
         <activity android:name=".RepositoryListActivity" />
+        <activity android:name=".UserRepositoryListActivity" />
         <activity android:name=".IssueListActivity" />
         <activity android:name=".CreateIssueActivity" />
+        <activity android:name=".EditIssueActivity" />
 
     </application>
 </manifest>

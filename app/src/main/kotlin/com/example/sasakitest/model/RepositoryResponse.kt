@@ -1,26 +1,60 @@
 package com.example.sasakitest.model
 
-import android.os.Parcelable
-import com.google.gson.annotations.SerializedName
-import kotlinx.parcelize.Parcelize
-
-@Parcelize
 data class RepositoryResponse(
-    @SerializedName("total_count") val totalCount: Int,
-    @SerializedName("incomplete_results") val incompleteResults: Boolean,
-    @SerializedName("items") val items: List<Item>
-) : Parcelable {
-    @Parcelize
-    data class Item(
-        val id: Int,
+    val data: SearchData
+) {
+    data class SearchData(
+        val search: SearchResult
+    )
+
+    data class SearchResult(
+        val pageInfo: PageInfo,
+        val edges: List<Edge>
+    )
+
+    // 🔹 `endCursor` を追加（リポジトリ検索で必要）
+    data class PageInfo(
+        val hasNextPage: Boolean,
+        val endCursor: String?  // 🔹 これを維持
+    )
+
+    data class Edge(
+        val node: RepositoryNode
+    )
+
+    data class RepositoryNode(
+        val id: String,
         val name: String,
         val description: String?,
-        @SerializedName("html_url") val htmlUrl: String,
-        val owner: Owner // ここを追加
-    ) : Parcelable
+        val url: String,
+        val owner: OwnerNode
+    )
 
-    @Parcelize
-    data class Owner( // Ownerクラスを明示的に定義
+    data class OwnerNode(
         val login: String
-    ) : Parcelable
+    )
+
+    data class Item(
+        val id: String,
+        val name: String,
+        val description: String?,
+        val htmlUrl: String,
+        val owner: Owner
+    )
+
+    data class Owner(
+        val login: String
+    )
+
+    fun toItemList(): List<Item> {
+        return data.search.edges.map { edge ->
+            Item(
+                id = edge.node.id,
+                name = edge.node.name,
+                description = edge.node.description,
+                htmlUrl = edge.node.url,
+                owner = Owner(edge.node.owner.login)
+            )
+        }
+    }
 }

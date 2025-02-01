@@ -49,17 +49,5 @@
 
 
 <!-- コメント編集ボタン -->
-<Button
-    android:id="@+id/editCommentButton"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:text="編集" />
 
-<!-- コメント削除ボタン -->
-<Button
-    android:id="@+id/deleteCommentButton"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:text="削除"
-    android:layout_marginStart="16dp" />
 </LinearLayout>
