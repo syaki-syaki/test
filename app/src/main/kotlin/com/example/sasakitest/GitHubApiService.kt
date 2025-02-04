@@ -247,40 +247,104 @@ object GitHubApiService {
     // イシュー（課題）を取得するメソッド（ページング対応）
 
     // 新しいイシューを作成するメソッド
+    fun getUserRepositories(context: Context): List<RepositoryResponse.Item> {
+        val token = getToken(context)
 
+        // GitHubのユーザー名を取得する（SharedPreferencesに保存されている場合）
+        val sharedPreferences = context.getSharedPreferences("GitHubPrefs", Context.MODE_PRIVATE)
+        val username = sharedPreferences.getString("GitHubUsername", "") ?: ""
 
-    fun getUserRepositories(token: String): List<RepositoryResponse.Item> {
-        val url = "$BASE_URL/user/repos"
+        if (username.isEmpty()) {
+            throw IllegalStateException("GitHubのユーザー名が設定されていません。")
+        }
+
+        val query = """
+    {
+      search(query: "user:$username", type: REPOSITORY, first: 100) {
+        edges {
+          node {
+            ... on Repository {
+              id
+              name
+              description
+              url
+              owner {
+                login
+              }
+            }
+          }
+        }
+      }
+    }
+    """.trimIndent()
+
+        val jsonQuery = Gson().toJson(mapOf("query" to query))
+        val requestBody = jsonQuery.toRequestBody("application/json".toMediaType())
+
         val request = Request.Builder()
-            .url(url)
+            .url("$BASE_URL/graphql")
             .addHeader("Authorization", "Bearer $token")
+            .addHeader("Content-Type", "application/json")
+            .post(requestBody)
             .build()
 
         client.newCall(request).execute().use { response ->
+            val responseBody = response.body?.string()
+            Log.d("GitHubApiService", "GraphQL Response: $responseBody")
+
             if (!response.isSuccessful) {
-                throw Exception("APIリクエスト失敗: ${response.code}")
+                throw Exception("GraphQL APIリクエスト失敗: ${response.code}, Response: $responseBody")
             }
-            val body = response.body?.string() ?: throw Exception("レスポンスが空です")
-            return Gson().fromJson(body, Array<RepositoryResponse.Item>::class.java).toList()
+
+            val graphQLResponse = Gson().fromJson(responseBody, RepositoryResponse::class.java)
+
+            return graphQLResponse.data.search.edges.map { edge ->
+                RepositoryResponse.Item(
+                    id = edge.node.id,
+                    name = edge.node.name,
+                    description = edge.node.description,
+                    htmlUrl = edge.node.url,
+                    owner = RepositoryResponse.Owner(edge.node.owner.login)
+                )
+            }
         }
     }
+
+
 
 
     // 新しいイシューを作成する
     fun createIssue(context: Context, repositoryName: String, title: String, body: String) {
         val token = getToken(context)
-        val url = "$BASE_URL/repos/$repositoryName/issues"
-        val json = """{ "title": "$title", "body": "$body" }"""
-        val requestBody = json.toRequestBody("application/json".toMediaType())
+
+        val query = """
+        mutation {
+          createIssue(input: {repositoryId: "$repositoryName", title: "$title", body: "$body"}) {
+            issue {
+              id
+              title
+              body
+            }
+          }
+        }
+        """.trimIndent()
+
+        val jsonQuery = Gson().toJson(mapOf("query" to query))
+        val requestBody = jsonQuery.toRequestBody("application/json".toMediaType())
+
         val request = Request.Builder()
-            .url(url)
+            .url("$BASE_URL/graphql")
             .addHeader("Authorization", "Bearer $token")
+            .addHeader("Content-Type", "application/json")
             .post(requestBody)
             .build()
 
         client.newCall(request).execute().use { response ->
+            val responseBody = response.body?.string()
+            Log.d("GitHubApiService", "GraphQL Response: $responseBody")
+
             if (!response.isSuccessful) {
-                throw Exception("Failed to create issue: ${response.code}")
+                throw Exception("GraphQL APIリクエスト失敗: ${response.code}, Response: $responseBody")
             }
         }
     }
