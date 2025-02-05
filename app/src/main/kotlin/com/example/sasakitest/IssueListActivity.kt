@@ -153,7 +153,9 @@ class IssueListActivity : AppCompatActivity() {
                 Log.d("IssueListActivity", "Attempting to delete (close) issue with ID: $issueId")
 
                 // GitHub API にリクエストを送信
-                GitHubApiService.deleteIssue(this@IssueListActivity, repositoryName, issueId)
+                // ✅ 正しく修正: repositoryName を削除
+                GitHubApiService.deleteIssue(this@IssueListActivity, issueId)
+
 
                 withContext(Dispatchers.Main) {
                     issueAdapter.issueList.removeIf { it.id == issueId } // 修正: `number` → `id`

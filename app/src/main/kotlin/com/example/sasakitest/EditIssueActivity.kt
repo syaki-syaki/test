@@ -39,7 +39,7 @@ class EditIssueActivity : AppCompatActivity() {
                     try {
                         GitHubApiService.editIssue(
                             context = this@EditIssueActivity,
-                            repositoryName = repositoryName,
+
                             issueId = issueId, // `issueNumber` → `issueId`
                             title = updatedTitle,
                             body = updatedBody

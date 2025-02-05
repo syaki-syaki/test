@@ -12,78 +12,42 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
 object GitHubApiService {
-    private const val BASE_URL = "https://api.github.com/graphql"
+    private const val BASE_URL = "https://api.github.com/graphql" //
     private val client = OkHttpClient()
     private val lastEndCursorMap = mutableMapOf<String, String?>()
 
     private fun getToken(context: Context): String {
-        val sharedPreferences = context.getSharedPreferences("GitHubPrefs", Context.MODE_PRIVATE)
-        val token = sharedPreferences.getString("GitHubToken", "") ?: ""
-        Log.d("GitHubApiService", "Retrieved Token: ${token.take(10)}...")
+        val sharedPreferences = context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+        val token = sharedPreferences.getString("AuthToken", "") ?: ""
+        Log.d("GraphQLApiService", "Retrieved Token: ${token.take(10)}...")
         if (token.isEmpty()) {
-            throw IllegalStateException("GitHub Token is not set")
+            throw IllegalStateException("API Token is not set")
         }
         return token
     }
 
-    // ✅ イシューの編集
-    fun editIssue(context: Context, repositoryName: String, issueId: String, title: String, body: String) {
-        val token = getToken(context)
-
-        val query = """
-        mutation {
-          updateIssue(input: {id: "$issueId", title: "$title", body: "$body"}) {
-            issue {
-              id
-              title
-              body
-            }
-          }
-        }
-        """.trimIndent()
-
-        sendGraphQLRequest(token, query)
-    }
-
-    // ✅ イシューの削除
-    fun deleteIssue(context: Context, repositoryName: String, issueId: String) {
-        val token = getToken(context)
-
-        val query = """
-        mutation {
-          deleteIssue(input: {issueId: "$issueId"}) {
-            clientMutationId
-          }
-        }
-        """.trimIndent()
-
-        sendGraphQLRequest(token, query)
-    }
-
-
+    //  ユーザーのリポジトリを取得（完全に `variables` を使用）
     fun getUserRepositories(context: Context): List<RepositoryResponse.Item> {
         val token = getToken(context)
 
-        val sharedPreferences = context.getSharedPreferences("GitHubPrefs", Context.MODE_PRIVATE)
-        val username = sharedPreferences.getString("GitHubUsername", "") ?: ""
+        val sharedPreferences = context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+        val username = sharedPreferences.getString("Username", "") ?: ""
 
         if (username.isEmpty()) {
-            throw IllegalStateException("GitHubのユーザー名が設定されていません。")
+            throw IllegalStateException("Username is not set.")
         }
 
         val query = """
-        {
-          search(query: "user:$username", type: REPOSITORY, first: 100) {
+        query GetUserRepositories(${"$"}username: String!) {
+          search(query: ${"$"}username, type: REPOSITORY, first: 100) {
             edges {
               node {
-                ... on Repository {
-                  id
-                  name
-                  description
-                  url
-                  owner {
-                    login
-                  }
+                id
+                name
+                description
+                url
+                owner {
+                  login
                 }
               }
             }
@@ -91,37 +55,22 @@ object GitHubApiService {
         }
         """.trimIndent()
 
-        val response = sendGraphQLRequest(token, query)
+        val variables = mapOf("username" to username)
+        val response = sendGraphQLRequest(token, query, variables)
         val graphQLResponse = Gson().fromJson(response, RepositoryResponse::class.java)
 
-        return graphQLResponse.data.search.edges.map { edge ->
-            RepositoryResponse.Item(
-                id = edge.node.id,
-                name = edge.node.name,
-                description = edge.node.description,
-                htmlUrl = edge.node.url,
-                owner = RepositoryResponse.Owner(edge.node.owner.login)
-            )
-        }
+        return graphQLResponse.toItemList()
     }
-    // ✅ イシューを取得
-    fun getIssues(context: Context, repositoryName: String, currentPage: Int, perPage: Int): List<Issue> {
+
+    // イシューの取得（完全に `variables` を使用）
+    fun getIssues(context: Context, repositoryId: String, currentPage: Int, perPage: Int): List<Issue> {
         val token = getToken(context)
-
-        if (!repositoryName.contains("/")) {
-            throw Exception("Invalid repositoryName format: $repositoryName")
-        }
-
-        val owner = repositoryName.split("/")[0]
-        val name = repositoryName.split("/")[1]
-
-        // `page > 1` の場合は `endCursor` を取得、それ以外は `null`
-        val afterCursor = if (currentPage > 1) lastEndCursorMap["issues"]?.let { "\"$it\"" } ?: "null" else "null"
+        val afterCursor = if (currentPage > 1) lastEndCursorMap["issues"] ?: null else null
 
         val query = """
-        {
-          repository(owner: "$owner", name: "$name") {
-            issues(first: $perPage, after: $afterCursor, states: OPEN) {
+        query GetIssues(${"$"}repositoryId: String!, ${"$"}first: Int!, ${"$"}after: String) {
+          repository(id: ${"$"}repositoryId) {
+            issues(first: ${"$"}first, after: ${"$"}after) {
               pageInfo {
                 hasNextPage
                 endCursor
@@ -138,10 +87,15 @@ object GitHubApiService {
         }
         """.trimIndent()
 
-        val response = sendGraphQLRequest(token, query)
+        val variables = mapOf(
+            "repositoryId" to repositoryId,
+            "first" to perPage,
+            "after" to afterCursor
+        )
+
+        val response = sendGraphQLRequest(token, query, variables)
         val graphQLResponse = Gson().fromJson(response, GraphQLIssueResponse::class.java)
 
-        // `endCursor` を保存し、次のページ用に使用
         lastEndCursorMap["issues"] = graphQLResponse.data.repository.issues.pageInfo.endCursor
 
         return graphQLResponse.data.repository.issues.edges.map { edge ->
@@ -153,19 +107,16 @@ object GitHubApiService {
         }
     }
 
-    // ✅ リポジトリ検索
+    //  リポジトリ検索（完全に `variables` を使用）
     fun searchRepositoriesWithKeyword(
         context: Context,
-        repositoryName: String?, // 🔹 repositoryName を追加
+        repositoryName: String?,
         keyword: String?,
         currentPage: Int
     ): Pair<List<RepositoryResponse.Item>, Boolean> {
         val token = getToken(context)
+        val afterCursor = if (currentPage > 1) lastEndCursorMap["search"] ?: null else null
 
-        // `currentPage > 1` の場合は `endCursor` を取得、それ以外は `null`
-        val afterCursor = if (currentPage > 1) lastEndCursorMap["search"] ?: "null" else "null"
-
-        // 🔹 `repositoryName` がある場合、それを検索条件に含める
         val searchQuery = if (!repositoryName.isNullOrEmpty()) {
             "$repositoryName ${keyword ?: ""}"
         } else {
@@ -173,51 +124,48 @@ object GitHubApiService {
         }
 
         val query = """
-    {
-      search(query: "$searchQuery", type: REPOSITORY, first: 25, after: $afterCursor) {
-        pageInfo {
-          hasNextPage
-          endCursor
-        }
-        edges {
-          node {
-            id
-            name
-            description
-            url
-            owner {
-              login
+        query SearchRepositories(${"$"}query: String!, ${"$"}first: Int!, ${"$"}after: String) {
+          search(query: ${"$"}query, type: REPOSITORY, first: ${"$"}first, after: ${"$"}after) {
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+            edges {
+              node {
+                id
+                name
+                description
+                url
+                owner {
+                  login
+                }
+              }
             }
           }
         }
-      }
-    }
-    """.trimIndent()
+        """.trimIndent()
 
-        val response = sendGraphQLRequest(token, query)
+        val variables = mapOf(
+            "query" to searchQuery,
+            "first" to 25,
+            "after" to afterCursor
+        )
+
+        val response = sendGraphQLRequest(token, query, variables)
         val graphQLResponse = Gson().fromJson(response, RepositoryResponse::class.java)
 
-        // `endCursor` を保存し、次のページ取得用に使用
         lastEndCursorMap["search"] = graphQLResponse.data.search.pageInfo.endCursor
 
-        return Pair(graphQLResponse.data.search.edges.map { edge ->
-            RepositoryResponse.Item(
-                id = edge.node.id,
-                name = edge.node.name,
-                description = edge.node.description,
-                htmlUrl = edge.node.url,
-                owner = RepositoryResponse.Owner(edge.node.owner.login)
-            )
-        }, graphQLResponse.data.search.pageInfo.hasNextPage)
+        return Pair(graphQLResponse.toItemList(), graphQLResponse.data.search.pageInfo.hasNextPage)
     }
 
-
-    fun createIssue(context: Context, repositoryName: String, title: String, body: String) {
+    // ✅ イシューの編集（完全に `variables` を使用）
+    fun editIssue(context: Context, issueId: String, title: String, body: String?) {
         val token = getToken(context)
 
         val query = """
-        mutation {
-          createIssue(input: {repositoryId: "$repositoryName", title: "$title", body: "$body"}) {
+        mutation EditIssue(${"$"}issueId: String!, ${"$"}title: String!, ${"$"}body: String) {
+          updateIssue(input: {id: ${"$"}issueId, title: ${"$"}title, body: ${"$"}body}) {
             issue {
               id
               title
@@ -227,13 +175,53 @@ object GitHubApiService {
         }
         """.trimIndent()
 
-        sendGraphQLRequest(token, query)
+        val variables = mapOf(
+            "issueId" to issueId,
+            "title" to title,
+            "body" to body
+        )
+
+        sendGraphQLRequest(token, query, variables)
+    }
+    fun createIssue(context: Context, repositoryId: String, title: String, body: String?) {
+        val token = getToken(context)
+
+        val query = """
+    mutation CreateIssue(${"$"}repositoryId: String!, ${"$"}title: String!, ${"$"}body: String) {
+      createIssue(repositoryId: ${"$"}repositoryId, title: ${"$"}title, body: ${"$"}body) {
+        issue {
+          id
+          title
+          body
+        }
+      }
+    }
+    """.trimIndent()
+
+        val variables = mapOf("repositoryId" to repositoryId, "title" to title, "body" to body)
+        sendGraphQLRequest(token, query, variables)
+    }
+    fun deleteIssue(context: Context, issueId: String) {
+        val token = getToken(context)
+
+        val query = """
+    mutation DeleteIssue(${"$"}issueId: String!) {
+      deleteIssue(issueId: ${"$"}issueId) {
+        success
+        message
+      }
+    }
+    """.trimIndent()
+
+        val variables = mapOf("issueId" to issueId)
+
+        sendGraphQLRequest(token, query, variables)
     }
 
 
-    // 🔹 GraphQL API 送信メソッド
-    private fun sendGraphQLRequest(token: String, query: String): String {
-        val jsonQuery = Gson().toJson(mapOf("query" to query))
+    // ✅ 汎用的な GraphQL API 送信メソッド
+    private fun sendGraphQLRequest(token: String, query: String, variables: Map<String, Any?>): String {
+        val jsonQuery = Gson().toJson(mapOf("query" to query, "variables" to variables))
         val requestBody = jsonQuery.toRequestBody("application/json".toMediaType())
 
         val request = Request.Builder()
@@ -245,7 +233,7 @@ object GitHubApiService {
 
         client.newCall(request).execute().use { response ->
             val responseBody = response.body?.string()
-            Log.d("GitHubApiService", "GraphQL Response: $responseBody")
+            Log.d("GraphQLApiService", "GraphQL Response: $responseBody")
 
             if (!response.isSuccessful) {
                 throw Exception("GraphQL APIリクエスト失敗: ${response.code}, Response: $responseBody")
