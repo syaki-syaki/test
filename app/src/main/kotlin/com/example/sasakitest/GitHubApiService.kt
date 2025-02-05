@@ -26,7 +26,7 @@ object GitHubApiService {
         return token
     }
 
-    //  ユーザーのリポジトリを取得（完全に `variables` を使用）
+    //  ユーザーのリポジトリを取得
     fun getUserRepositories(context: Context): List<RepositoryResponse.Item> {
         val token = getToken(context)
 
@@ -62,7 +62,7 @@ object GitHubApiService {
         return graphQLResponse.toItemList()
     }
 
-    // イシューの取得（完全に `variables` を使用）
+    // イシューの取得
     fun getIssues(context: Context, repositoryId: String, currentPage: Int, perPage: Int): List<Issue> {
         val token = getToken(context)
         val afterCursor = if (currentPage > 1) lastEndCursorMap["issues"] ?: null else null
@@ -107,7 +107,7 @@ object GitHubApiService {
         }
     }
 
-    //  リポジトリ検索（完全に `variables` を使用）
+    //  リポジトリ検索
     fun searchRepositoriesWithKeyword(
         context: Context,
         repositoryName: String?,
@@ -159,7 +159,7 @@ object GitHubApiService {
         return Pair(graphQLResponse.toItemList(), graphQLResponse.data.search.pageInfo.hasNextPage)
     }
 
-    // ✅ イシューの編集（完全に `variables` を使用）
+    //  イシューの編集
     fun editIssue(context: Context, issueId: String, title: String, body: String?) {
         val token = getToken(context)
 
@@ -219,7 +219,7 @@ object GitHubApiService {
     }
 
 
-    // ✅ 汎用的な GraphQL API 送信メソッド
+
     private fun sendGraphQLRequest(token: String, query: String, variables: Map<String, Any?>): String {
         val jsonQuery = Gson().toJson(mapOf("query" to query, "variables" to variables))
         val requestBody = jsonQuery.toRequestBody("application/json".toMediaType())
