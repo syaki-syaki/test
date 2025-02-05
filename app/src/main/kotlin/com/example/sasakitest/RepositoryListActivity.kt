@@ -2,46 +2,46 @@ package com.example.sasakitest
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
-import android.widget.Toast
+import android.widget.Button//nCreate(savedInstanceState: Bundle?自体
+import android.widget.Toast//これってアプリ中止させるやつだっけ
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager//BottonとかrecyclerViewとかこのimportから来てるの？
 import androidx.recyclerview.widget.RecyclerView
 import com.example.sasakitest.adapter.RepositoryAdapter
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope//これなに
+import kotlinx.coroutines.Dispatchers//これもどこのクラスのために使われれるの？
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class RepositoryListActivity : AppCompatActivity() {
-    private lateinit var recyclerView: RecyclerView
+class RepositoryListActivity : AppCompatActivity() {//AppCompatActivity()の存在意義
+private lateinit var recyclerView: RecyclerView
     private lateinit var nextPageButton: Button
     private lateinit var prevPageButton: Button
 
     private val repositoryAdapter = RepositoryAdapter { repository ->
         // リポジトリクリック時の処理
-        val intent = Intent(this, IssueListActivity::class.java).apply {
-            putExtra("repositoryName", "${repository.owner.login}/${repository.name}")
-            putExtra("fromActivity", "RepositoryListActivity") // 遷移元を指定
+        val intent = Intent(this, IssueListActivity::class.java).apply {//(this, IssueListActivity::class.java).apply 個々の部分の１単語ずつの意味教えて
+            putExtra("repositoryName", "${repository.owner.login}/${repository.name}")//${repository.owner.login}/${repository.name}のなかにある/の意味
+            putExtra("fromActivity", "RepositoryListActivity")
         }
         startActivity(intent)
     }
 
 
-    private var currentPage = 1 // 現在のページ番号
-    private var hasNextPage = true // 次のページが存在するか
-    private lateinit var query: String
+    private var currentPage = 1
+    private var hasNextPage = true //ここでのtrueとは？存在するってこと？
+    private lateinit var query: String //何のためにこれ定義したん
 
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_repository_list)
+        setContentView(R.layout.activity_repository_list)//activity_repository_listこれは何？
 
         val repositoryName = intent.getStringExtra("repositoryName") ?: ""
         val keyword = intent.getStringExtra("keyword") // キーワードを取得
 
-        recyclerView = findViewById(R.id.recyclerView)
+        recyclerView = findViewById(R.id.recyclerView)//findViewById(R.id.recyclerView)これ何してるの人単語ずつ意味教えて
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = repositoryAdapter
 
@@ -51,8 +51,8 @@ class RepositoryListActivity : AppCompatActivity() {
         loadRepositories(repositoryName, keyword)
 
         // 次のページボタン
-        nextPageButton.setOnClickListener {
-            if (hasNextPage) {
+        nextPageButton.setOnClickListener {//nextPageButton はこのクラスの中で定義されてるがの中にsetOnClickListenerのような関数あったけ
+            if (hasNextPage) {//hasnextpageってcurrentpageと連携してるの？
                 currentPage++
                 loadRepositories(repositoryName, keyword)
             } else {
@@ -72,7 +72,7 @@ class RepositoryListActivity : AppCompatActivity() {
     }
 
     private fun loadRepositories(repositoryName: String, keyword: String?) {
-        CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.IO).launch {//(Dispatchers.IO).launchこれの人単語ずつの意味は
             try {
                 // GitHubApiServiceにリポジトリ名とキーワードを渡して検索
                 val (repositories, nextPageAvailable) = GitHubApiService.searchRepositoriesWithKeyword(
@@ -82,13 +82,13 @@ class RepositoryListActivity : AppCompatActivity() {
                     currentPage // 現在のページ番号を渡す
                 )
                 withContext(Dispatchers.Main) {
-                    if (repositories.isNotEmpty()) {
+                    if (repositories.isNotEmpty()) {//  withContext(Dispatchers.Main)これの１単語ずつの意味は
                         repositoryAdapter.setRepositories(repositories)
                         hasNextPage = nextPageAvailable
                         updatePagingButtons()
                     } else {
-                        Toast.makeText(
-                            this@RepositoryListActivity,
+                        Toast.makeText(//
+                            this@RepositoryListActivity,//@RepositoryListActivityの@やmakeTextやLENGTH_SHORTはどういう意味
                             "該当するリポジトリが見つかりませんでした",
                             Toast.LENGTH_SHORT
                         ).show()
@@ -98,7 +98,7 @@ class RepositoryListActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     Toast.makeText(
                         this@RepositoryListActivity,
-                        "エラー: ${e.message}",
+                        "エラー: ${e.message}",//e.messageのeや{}の意味は　(Dispatchers.Main)の意味は
                         Toast.LENGTH_SHORT
                     ).show()
                 }

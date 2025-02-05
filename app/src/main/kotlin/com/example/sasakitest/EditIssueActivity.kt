@@ -18,7 +18,7 @@ class EditIssueActivity : AppCompatActivity() {
         val issueId = intent.getStringExtra("issueId") ?: "" // `issueNumber` → `issueId`
         val repositoryName = intent.getStringExtra("repositoryName") ?: ""
         val issueTitle = intent.getStringExtra("issueTitle") ?: ""
-        val issueBody = intent.getStringExtra("issueBody") ?: ""
+        val issueBody = intent.getStringExtra("issueBody") ?: ""//getStringExtra関数はどこで定義されてる何者？
 
         val titleEditText: EditText = findViewById(R.id.titleEditText)
         val bodyEditText: EditText = findViewById(R.id.bodyEditText)

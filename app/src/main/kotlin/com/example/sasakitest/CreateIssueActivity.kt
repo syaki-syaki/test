@@ -33,7 +33,7 @@ class CreateIssueActivity : AppCompatActivity() {
 
         // イシュー作成ボタンのクリックリスナー
         createIssueButton.setOnClickListener {
-            val title = issueTitleEditText.text.toString().trim()
+            val title = issueTitleEditText.text.toString().trim()//trim（）はどこで定義されてるの
             val body = issueBodyEditText.text.toString().trim()
 
             // タイトルが空の場合はエラーメッセージ

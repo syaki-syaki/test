@@ -16,7 +16,7 @@ data class GraphQLIssueResponse(
         val edges: List<Edge>
     )
 
-    // 🔹 `endCursor` を維持（イシューのページネーションに必要）
+    // 🔹 endCursor を維持（イシューのページネーションに必要）
     data class PageInfo(
         val hasNextPage: Boolean,
         val endCursor: String?

@@ -23,7 +23,7 @@ class IssueListActivity : AppCompatActivity() {
     private lateinit var prevPageButton: Button
     private lateinit var createIssueButton: Button
     private lateinit var editIssueLauncher: ActivityResultLauncher<Intent>
-    private lateinit var createIssueLauncher: ActivityResultLauncher<Intent>
+    private lateinit var createIssueLauncher: ActivityResultLauncher<Intent>//Intent二つあるしこの間数何
     private val issueAdapter = IssueAdapter(
         onEdit = { issue ->
             Log.d("IssueListActivity", "Edit button clicked for issue Number: ${issue.id}")
@@ -49,7 +49,7 @@ class IssueListActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_issue_list)
+        setContentView(R.layout.activity_issue_list)//setContentViewとは
 
         // ActivityResultLauncher を初期化
         editIssueLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -62,7 +62,7 @@ class IssueListActivity : AppCompatActivity() {
         }
 
         createIssueLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == RESULT_OK) {
+            if (result.resultCode == RESULT_OK) {// これもAppCompatActivityなの？
                 Log.d("IssueListActivity", "Issue created successfully.")
                 loadIssues(repositoryName) // イシューを再読み込み
             } else {
@@ -71,7 +71,7 @@ class IssueListActivity : AppCompatActivity() {
         }
 
         recyclerView = findViewById(R.id.recyclerView)
-        recyclerView.layoutManager = LinearLayoutManager(this)
+        recyclerView.layoutManager = LinearLayoutManager(this)//このthisとlayoutManagerとadapterはなに
         recyclerView.adapter = issueAdapter
 
         nextPageButton = findViewById(R.id.nextPageButton)
