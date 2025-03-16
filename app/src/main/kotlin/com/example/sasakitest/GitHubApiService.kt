@@ -1,244 +1,166 @@
 package com.example.sasakitest
 
 import android.content.Context
-import android.util.Log
-import com.example.sasakitest.model.GraphQLIssueResponse
+import com.apollographql.apollo3.ApolloClient
+import com.apollographql.apollo3.api.Optional
+import com.apollographql.apollo3.exception.ApolloException
+import com.example.sasakitest.graphql.CreateIssueMutation
+import com.example.sasakitest.graphql.DeleteIssueMutation
+import com.example.sasakitest.graphql.GetIssuesQuery
+import com.example.sasakitest.graphql.GetRepositoriesQuery
+import com.example.sasakitest.graphql.GetUserRepositoriesQuery
+import com.example.sasakitest.graphql.SearchRepositoriesQuery
+import com.example.sasakitest.graphql.UpdateIssueMutation
 import com.example.sasakitest.model.Issue
 import com.example.sasakitest.model.RepositoryResponse
-import com.google.gson.Gson
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
+
 
 object GitHubApiService {
-    private const val BASE_URL = "https://api.github.com/graphql" //
-    private val client = OkHttpClient()
-    private val lastEndCursorMap = mutableMapOf<String, String?>()
+    private const val BASE_URL = "https://api.github.com/graphql"
 
-    private fun getToken(context: Context): String {
-        val sharedPreferences = context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
-        val token = sharedPreferences.getString("AuthToken", "") ?: ""
-        Log.d("GraphQLApiService", "Retrieved Token: ${token.take(10)}...")
-        if (token.isEmpty()) {
-            throw IllegalStateException("API Token is not set")
-        }
-        return token
-    }
-
-    //  ユーザーのリポジトリを取得
-    fun getUserRepositories(context: Context): List<RepositoryResponse.Item> {
-        val token = getToken(context)
-
-        val sharedPreferences = context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
-        val username = sharedPreferences.getString("Username", "") ?: ""
-
-        if (username.isEmpty()) {
-            throw IllegalStateException("Username is not set.")
-        }
-
-        val query = """
-        query GetUserRepositories(${"$"}username: String!) {
-          search(query: ${"$"}username, type: REPOSITORY, first: 100) {
-            edges {
-              node {
-                id
-                name
-                description
-                url
-                owner {
-                  login
-                }
-              }
-            }
-          }
-        }
-        """.trimIndent()
-
-        val variables = mapOf("username" to username)
-        val response = sendGraphQLRequest(token, query, variables)
-        val graphQLResponse = Gson().fromJson(response, RepositoryResponse::class.java)
-
-        return graphQLResponse.toItemList()
-    }
-
-    // イシューの取得
-    fun getIssues(context: Context, repositoryId: String, currentPage: Int, perPage: Int): List<Issue> {
-        val token = getToken(context)
-        val afterCursor = if (currentPage > 1) lastEndCursorMap["issues"] ?: null else null
-
-        val query = """
-        query GetIssues(${"$"}repositoryId: String!, ${"$"}first: Int!, ${"$"}after: String) {
-          repository(id: ${"$"}repositoryId) {
-            issues(first: ${"$"}first, after: ${"$"}after) {
-              pageInfo {
-                hasNextPage
-                endCursor
-              }
-              edges {
-                node {
-                  id
-                  title
-                  body
-                }
-              }
-            }
-          }
-        }
-        """.trimIndent()
-
-        val variables = mapOf(
-            "repositoryId" to repositoryId,
-            "first" to perPage,
-            "after" to afterCursor
-        )
-
-        val response = sendGraphQLRequest(token, query, variables)
-        val graphQLResponse = Gson().fromJson(response, GraphQLIssueResponse::class.java)
-
-        lastEndCursorMap["issues"] = graphQLResponse.data.repository.issues.pageInfo.endCursor
-
-        return graphQLResponse.data.repository.issues.edges.map { edge ->
-            Issue(
-                id = edge.node.id,
-                title = edge.node.title,
-                body = edge.node.body
-            )
-        }
-    }
-
-    //  リポジトリ検索
-    fun searchRepositoriesWithKeyword(
-        context: Context,
-        repositoryName: String?,
-        keyword: String?,
-        currentPage: Int
-    ): Pair<List<RepositoryResponse.Item>, Boolean> {
-        val token = getToken(context)
-        val afterCursor = if (currentPage > 1) lastEndCursorMap["search"] ?: null else null
-
-        val searchQuery = if (!repositoryName.isNullOrEmpty()) {
-            "$repositoryName ${keyword ?: ""}"
-        } else {
-            keyword ?: ""
-        }
-
-        val query = """
-        query SearchRepositories(${"$"}query: String!, ${"$"}first: Int!, ${"$"}after: String) {
-          search(query: ${"$"}query, type: REPOSITORY, first: ${"$"}first, after: ${"$"}after) {
-            pageInfo {
-              hasNextPage
-              endCursor
-            }
-            edges {
-              node {
-                id
-                name
-                description
-                url
-                owner {
-                  login
-                }
-              }
-            }
-          }
-        }
-        """.trimIndent()
-
-        val variables = mapOf(
-            "query" to searchQuery,
-            "first" to 25,
-            "after" to afterCursor
-        )
-
-        val response = sendGraphQLRequest(token, query, variables)
-        val graphQLResponse = Gson().fromJson(response, RepositoryResponse::class.java)
-
-        lastEndCursorMap["search"] = graphQLResponse.data.search.pageInfo.endCursor
-
-        return Pair(graphQLResponse.toItemList(), graphQLResponse.data.search.pageInfo.hasNextPage)
-    }
-
-    //  イシューの編集
-    fun editIssue(context: Context, issueId: String, title: String, body: String?) {
-        val token = getToken(context)
-
-        val query = """
-        mutation EditIssue(${"$"}issueId: String!, ${"$"}title: String!, ${"$"}body: String) {
-          updateIssue(input: {id: ${"$"}issueId, title: ${"$"}title, body: ${"$"}body}) {
-            issue {
-              id
-              title
-              body
-            }
-          }
-        }
-        """.trimIndent()
-
-        val variables = mapOf(
-            "issueId" to issueId,
-            "title" to title,
-            "body" to body
-        )
-
-        sendGraphQLRequest(token, query, variables)
-    }
-    fun createIssue(context: Context, repositoryId: String, title: String, body: String?) {
-        val token = getToken(context)
-
-        val query = """
-    mutation CreateIssue(${"$"}repositoryId: String!, ${"$"}title: String!, ${"$"}body: String) {
-      createIssue(repositoryId: ${"$"}repositoryId, title: ${"$"}title, body: ${"$"}body) {
-        issue {
-          id
-          title
-          body
-        }
-      }
-    }
-    """.trimIndent()
-
-        val variables = mapOf("repositoryId" to repositoryId, "title" to title, "body" to body)
-        sendGraphQLRequest(token, query, variables)
-    }
-    fun deleteIssue(context: Context, issueId: String) {
-        val token = getToken(context)
-
-        val query = """
-    mutation DeleteIssue(${"$"}issueId: String!) {
-      deleteIssue(issueId: ${"$"}issueId) {
-        success
-        message
-      }
-    }
-    """.trimIndent()
-
-        val variables = mapOf("issueId" to issueId)
-
-        sendGraphQLRequest(token, query, variables)
-    }
-
-
-
-    private fun sendGraphQLRequest(token: String, query: String, variables: Map<String, Any?>): String {
-        val jsonQuery = Gson().toJson(mapOf("query" to query, "variables" to variables))
-        val requestBody = jsonQuery.toRequestBody("application/json".toMediaType())
-
-        val request = Request.Builder()
-            .url(BASE_URL)
-            .addHeader("Authorization", "Bearer $token")
-            .addHeader("Content-Type", "application/json")
-            .post(requestBody)
+    // ✅ Apollo Client のインスタンス作成
+    private fun createApolloClient(context: Context): ApolloClient {
+        return ApolloClient.Builder()
+            .serverUrl(BASE_URL)
+            .addHttpHeader("Authorization", "Bearer ${getToken(context)}") // 🔹 トークン取得
             .build()
+    }
 
-        client.newCall(request).execute().use { response ->
-            val responseBody = response.body?.string()
-            Log.d("GraphQLApiService", "GraphQL Response: $responseBody")
+    // ✅ GitHub トークンを取得（SharedPreferences から取得）
+    private fun getToken(context: Context): String {
+        val sharedPreferences = context.getSharedPreferences("GitHubPrefs", Context.MODE_PRIVATE)
+        return sharedPreferences.getString("GitHubToken", null)
+            ?: throw IllegalStateException("GitHub Token is not set. Please enter a valid token.")
+    }
 
-            if (!response.isSuccessful) {
-                throw Exception("GraphQL APIリクエスト失敗: ${response.code}, Response: $responseBody")
-            }
-            return responseBody ?: "{}"
+    // 🆕 **入力したユーザーのリポジトリ一覧を取得**
+    suspend fun getUserRepositories(context: Context, username: String): List<RepositoryResponse.Item> {
+        val apolloClient = createApolloClient(context)
+
+        return try {
+            val response = apolloClient.query(GetUserRepositoriesQuery(username)).execute()
+            response.data?.user?.repositories?.nodes?.mapNotNull {
+                RepositoryResponse.Item(
+                    id = it?.id.orEmpty(),
+                    name = it?.name.orEmpty(),
+                    description = it?.description.orEmpty(),
+                    htmlUrl = it?.url.orEmpty(),
+
+                    owner = RepositoryResponse.Owner(it?.owner?.login.orEmpty())
+                )
+            } ?: emptyList()
+        } catch (e: ApolloException) {
+            emptyList()
         }
+    }
+
+    // 📂 **リポジトリ一覧を取得**
+    suspend fun getRepository(context: Context, username: String): List<RepositoryResponse.Item> {
+        val apolloClient = createApolloClient(context)
+
+        return try {
+            val response = apolloClient.query(GetRepositoriesQuery(username)).execute()
+            response.data?.user?.repositories?.nodes?.mapNotNull {
+                RepositoryResponse.Item(
+                    id = it?.id.orEmpty(),
+                    name = it?.name.orEmpty(),
+                    description = it?.description.orEmpty(),
+                    htmlUrl = it?.url.orEmpty(),
+                    owner = RepositoryResponse.Owner(it?.owner?.login.orEmpty())
+                )
+            } ?: emptyList()
+        } catch (e: ApolloException) {
+            emptyList()
+        }
+    }
+
+    // 🔎 **リポジトリ検索**
+    suspend fun searchRepositoriesWithKeyword(context: Context, query: String, first: Int): List<RepositoryResponse.Item> {
+        val apolloClient = createApolloClient(context)
+
+        return try {
+            val response = apolloClient.query(
+                SearchRepositoriesQuery(query, first, Optional.absent())
+            ).execute()
+
+            response.data?.search?.edges?.mapNotNull {
+                val repo = it?.node?.onRepository
+                if (repo != null) {
+                    RepositoryResponse.Item(
+                        id = repo.id,
+                        name = repo.name,
+                        description = repo.description.orEmpty(),
+                        htmlUrl = repo.url,
+                        owner = RepositoryResponse.Owner(repo.owner.login)
+                    )
+                } else {
+                    null
+                }
+            } ?: emptyList()
+        } catch (e: ApolloException) {
+            emptyList()
+        }
+    }
+
+    // 📝 **イシュー一覧を取得**
+    suspend fun getIssues(
+        context: Context,
+        username: String,
+        repositoryName: String,
+        first: Int,
+        after: String? = null
+    ): List<Issue> {
+        val apolloClient = createApolloClient(context)
+
+        return try {
+            val response = apolloClient.query(
+                GetIssuesQuery(
+                    username,
+                    repositoryName,
+                    Optional.presentIfNotNull(first), // ✅ Optional にラップ
+                    Optional.presentIfNotNull(after) // ✅ Optional にラップ
+                )
+            ).execute()
+
+            response.data?.user?.repository?.issues?.nodes?.mapNotNull {
+                Issue(
+                    id = it?.id.orEmpty(),
+                    title = it?.title.orEmpty(),
+                    body = it?.body.orEmpty()
+                )
+            } ?: emptyList()
+        } catch (e: ApolloException) {
+            emptyList()
+        }
+    }
+
+
+    // 📝 **イシューの作成**
+    suspend fun createIssue(context: Context, repositoryId: String, title: String, body: String?) {
+        val apolloClient = createApolloClient(context)
+
+        apolloClient.mutation(
+            CreateIssueMutation(repositoryId, title, Optional.presentIfNotNull(body))
+        ).execute()
+    }
+
+    // 🗑 **イシュー削除**
+    suspend fun deleteIssue(context: Context, issueId: String): Boolean {
+        val apolloClient = createApolloClient(context)
+        return try {
+            val response = apolloClient.mutation(DeleteIssueMutation(issueId)).execute()
+            response.data?.deleteIssue != null
+        } catch (e: ApolloException) {
+            false
+        }
+    }
+
+    // 📝 **イシューの編集**
+    suspend fun editIssue(context: Context, issueId: String, title: String, body: String?) {
+        val apolloClient = createApolloClient(context)
+
+        apolloClient.mutation(
+            UpdateIssueMutation(issueId, title, Optional.presentIfNotNull(body))
+        ).execute()
     }
 }

@@ -1,0 +1,11 @@
+overwrite: true
+schema:  app/src/main/graphql/schema.json # ✅ GraphQL スキーマのパス
+documents: app/src/main/graphql/*.graphql  # ✅ GraphQL クエリ定義のパス
+generates:
+  app/src/main/kotlin/com/example/sasakitest/graphql:  # ✅ `graphql.kt` の出力先を変更
+    plugins:
+      - kotlin  # ✅ Kotlin コードを生成
+    config:
+      packageName: "com.example.sasakitest.graphql"  # ✅ `graphql.kt` のパッケージ名を指定
+      onlyOperationTypes: true  # ✅ 必要なデータ型のみ生成
+      addTypename: false  # ✅ 不要な `__typename` を削除（コード短縮）

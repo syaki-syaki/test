@@ -13,6 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "sasaki.test"
-include(":app")
- 
+rootProject.name = "sasakitest"
+include(":app")  // ★ここを追加

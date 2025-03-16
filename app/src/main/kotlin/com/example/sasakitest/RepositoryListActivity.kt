@@ -2,93 +2,103 @@ package com.example.sasakitest
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Button//nCreate(savedInstanceState: Bundle?自体
-import android.widget.Toast//これってアプリ中止させるやつだっけ
+import android.widget.Button
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.LinearLayoutManager//BottonとかrecyclerViewとかこのimportから来てるの？
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.sasakitest.adapter.RepositoryAdapter
-import kotlinx.coroutines.CoroutineScope//これなに
-import kotlinx.coroutines.Dispatchers//これもどこのクラスのために使われれるの？
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class RepositoryListActivity : AppCompatActivity() {//AppCompatActivity()の存在意義
-private lateinit var recyclerView: RecyclerView
-    private lateinit var nextPageButton: Button
-    private lateinit var prevPageButton: Button
+// 💬 LINE の「トーク一覧画面」に相当する Activity
+class RepositoryListActivity : AppCompatActivity() {
 
+    private lateinit var recyclerView: RecyclerView // 📌 LINE の「トーク一覧」を表示する UI
+    private lateinit var nextPageButton: Button // 📌 「次のトークページ」ボタン
+    private lateinit var prevPageButton: Button // 📌 「前のトークページ」ボタン
+
+    // 💬 LINE のトーク一覧（RecyclerView に表示するリスト）
     private val repositoryAdapter = RepositoryAdapter { repository ->
-        // リポジトリクリック時の処理
-        val intent = Intent(this, IssueListActivity::class.java).apply {//(this, IssueListActivity::class.java).apply 個々の部分の１単語ずつの意味教えて
-            putExtra("repositoryName", "${repository.owner.login}/${repository.name}")//${repository.owner.login}/${repository.name}のなかにある/の意味
-            putExtra("fromActivity", "RepositoryListActivity")
+        // 💬 ユーザーがトーク（リポジトリ）をクリックしたときの処理
+        val intent = Intent(this, IssueListActivity::class.java).apply {
+            putExtra(
+                "repositoryName",
+                "${repository.owner.login}/${repository.name}"
+            ) // 📌 トーク（リポジトリ）の情報を渡す
+            putExtra("fromActivity", "RepositoryListActivity") // 📌 どの画面から遷移したかを記録
         }
-        startActivity(intent)
+        startActivity(intent) // 📌 LINE でいうと「トーク詳細画面（チャット画面）へ移動」
     }
 
-
-    private var currentPage = 1
-    private var hasNextPage = true //ここでのtrueとは？存在するってこと？
-    private lateinit var query: String //何のためにこれ定義したん
-
-
+    private var currentPage = 1 // 📌 現在のページ（LINE でいう「今見ているトーク一覧のページ」）
+    private var hasNextPage = true // 📌 次のページがあるか（LINE でいう「次のトークがあるか」）
+    private lateinit var query: String // 📌 検索クエリ（トーク検索用のキーワード）
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_repository_list)//activity_repository_listこれは何？
+        setContentView(R.layout.activity_repository_list) // 📌 トーク一覧のレイアウトをセット
 
-        val repositoryName = intent.getStringExtra("repositoryName") ?: ""
-        val keyword = intent.getStringExtra("keyword") // キーワードを取得
+        // 💬 画面遷移時に受け取った「トーク名（リポジトリ名）」と「検索キーワード」を取得
+        val repositoryName = intent.getStringExtra("repositoryName") ?: "" // 📌 トーク（リポジトリ）名を取得
+        val keyword = intent.getStringExtra("keyword") // 📌 検索キーワードを取得（特定のトークを検索）
 
-        recyclerView = findViewById(R.id.recyclerView)//findViewById(R.id.recyclerView)これ何してるの人単語ずつ意味教えて
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        recyclerView.adapter = repositoryAdapter
+        // 💬 RecyclerView（トーク一覧）をセットアップ
+        recyclerView = findViewById(R.id.recyclerView)
+        recyclerView.layoutManager = LinearLayoutManager(this) // 📌 縦スクロールに設定
+        recyclerView.adapter = repositoryAdapter // 📌 RecyclerView に Adapter をセット（LINE のトーク一覧を管理）
 
+        // 💬 ページング用のボタンを取得（「次へ」「前へ」ボタン）
         nextPageButton = findViewById(R.id.nextPageButton)
         prevPageButton = findViewById(R.id.prevPageButton)
 
+        // 💬 初回のトークデータ（リポジトリ一覧）を取得
         loadRepositories(repositoryName, keyword)
 
-        // 次のページボタン
-        nextPageButton.setOnClickListener {//nextPageButton はこのクラスの中で定義されてるがの中にsetOnClickListenerのような関数あったけ
-            if (hasNextPage) {//hasnextpageってcurrentpageと連携してるの？
-                currentPage++
-                loadRepositories(repositoryName, keyword)
+        // 💬 「次のページ」ボタンの処理（LINE でいう「次のトークページを開く」）
+        nextPageButton.setOnClickListener {
+            if (hasNextPage) {
+                currentPage++ // 📌 ページを 1 つ増やす
+                loadRepositories(repositoryName, keyword) // 📌 新しいトーク一覧を取得
             } else {
-                Toast.makeText(this, "次のページはありません", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "次のページはありません", Toast.LENGTH_SHORT)
+                    .show() // 📌 「次のトークページはないよ」と通知
             }
         }
 
-        // 前のページボタン
+        // 💬 「前のページ」ボタンの処理（LINE でいう「前のトークページを開く」）
         prevPageButton.setOnClickListener {
             if (currentPage > 1) {
-                currentPage--
-                loadRepositories(repositoryName, keyword)
+                currentPage-- // 📌 ページを 1 つ戻す
+                loadRepositories(repositoryName, keyword) // 📌 新しいトーク一覧を取得
             } else {
-                Toast.makeText(this, "前のページはありません", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "前のページはありません", Toast.LENGTH_SHORT)
+                    .show() // 📌 「前のトークページはないよ」と通知
             }
         }
     }
 
-    private fun loadRepositories(repositoryName: String, keyword: String?) {
-        CoroutineScope(Dispatchers.IO).launch {//(Dispatchers.IO).launchこれの人単語ずつの意味は
+
+
+    // 💬 LINE の「トーク一覧を取得する処理」
+    // GitHub からリポジトリを取得する関数
+    private fun loadRepositories(username: String, keyword: String?) {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
-                // GitHubApiServiceにリポジトリ名とキーワードを渡して検索
-                val (repositories, nextPageAvailable) = GitHubApiService.searchRepositoriesWithKeyword(
+                val repositories = GitHubApiService.getRepository(
                     this@RepositoryListActivity,
-                    repositoryName,
-                    keyword,
-                    currentPage // 現在のページ番号を渡す
+                    username
                 )
                 withContext(Dispatchers.Main) {
-                    if (repositories.isNotEmpty()) {//  withContext(Dispatchers.Main)これの１単語ずつの意味は
+                    if (repositories.isNotEmpty()) {
                         repositoryAdapter.setRepositories(repositories)
-                        hasNextPage = nextPageAvailable
+                        hasNextPage = repositories.size == 25
                         updatePagingButtons()
                     } else {
-                        Toast.makeText(//
-                            this@RepositoryListActivity,//@RepositoryListActivityの@やmakeTextやLENGTH_SHORTはどういう意味
+                        Toast.makeText(
+                            this@RepositoryListActivity,
                             "該当するリポジトリが見つかりませんでした",
                             Toast.LENGTH_SHORT
                         ).show()
@@ -98,7 +108,7 @@ private lateinit var recyclerView: RecyclerView
                 withContext(Dispatchers.Main) {
                     Toast.makeText(
                         this@RepositoryListActivity,
-                        "エラー: ${e.message}",//e.messageのeや{}の意味は　(Dispatchers.Main)の意味は
+                        "エラー: ${e.message}",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -106,9 +116,10 @@ private lateinit var recyclerView: RecyclerView
         }
     }
 
-    private fun updatePagingButtons() {
-        // ボタンの有効/無効を更新
-        prevPageButton.isEnabled = currentPage > 1
-        nextPageButton.isEnabled = hasNextPage
+
+    // ページングボタンの有効・無効を更新
+    private fun updatePagingButtons() { //㊿
+        prevPageButton.isEnabled = currentPage > 1 //㉔ ページが 1 より大きければ「前へ」ボタンを有効化
+        nextPageButton.isEnabled = hasNextPage //㉔ 次のページがあるなら「次へ」ボタンを有効化
     }
 }
