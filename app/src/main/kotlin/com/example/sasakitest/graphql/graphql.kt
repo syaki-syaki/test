@@ -19,15 +19,6 @@ data class SearchRepositories(
 data class RepositorySearchResult(
     val edges: List<RepositoryEdge>,
     val pageInfo: PageInfo
-)
-
-
-
-
-
-
-
-
 
 //以上追加code
 data class AbortQueuedMigrationsInput(

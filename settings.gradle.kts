@@ -1,8 +1,8 @@
 pluginManagement {
     repositories {
         gradlePluginPortal()
-        google()
         mavenCentral()
+        google()
     }
 }
 
@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "sasakitest"
-include(":app")  // ★ここを追加
+include(":app")
