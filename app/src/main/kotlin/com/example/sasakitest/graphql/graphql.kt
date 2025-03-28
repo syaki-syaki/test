@@ -1,5 +1,8 @@
 package  com.example.sasakitest.graphql
 
+import androidx.compose.foundation.pager.PageInfo
+
+
 data class Viewer(
     val repositories: RepositoryConnection
 )

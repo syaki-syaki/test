@@ -1,9 +1,12 @@
 plugins {
+
     id("com.android.application")
     id("org.jetbrains.kotlin.android") version "1.9.0"
     id("kotlin-parcelize")
-    id("com.apollographql.apollo3") version "4.1.0" // ✅ v4系に更新！
+    id("com.apollographql.apollo3") version "3.8.2"  // ✅ Apollo 3.x
 }
+
+
 
 android {
     namespace = "com.example.sasakitest"
@@ -54,29 +57,36 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.constraintlayout:constraintlayout:2.2.1")
+    implementation("com.apollographql.apollo3:apollo-runtime:3.8.2") // ✅ 最新バージョン確認
+    implementation("com.apollographql.apollo3:apollo-api:3.8.2")
+    implementation("com.apollographql.apollo3:apollo-normalized-cache:3.8.2")
 
-    // Corrected duplicate dependency
-    // implementation("com.apollographql.apollo3:apollo-normalized-cache:3.8.2")
-    implementation("com.apollographql.apollo3:apollo-normalized-cache:4.1.0")
-    implementation("com.apollographql.apollo3:apollo-runtime:4.1.0")
-    implementation("com.apollographql.apollo3:apollo-api:4.1.0")
 
     // Gson（もし必要なら）
     implementation("com.google.code.gson:gson:2.10.1")
+    implementation("androidx.compose.foundation:foundation-android:1.7.8")
+
 
     // テスト用
     testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
 }
 
 apollo {
     service("github") {
         packageName.set("com.example.sasakitest.graphql")
-        schemaFile.set(file("src/main/graphql/schema.graphqls")) // ✅ graphqls形式に変更済
-        srcDir("src/main/graphql") // ✅ クエリファイルの場所を明示（任意だが推奨）
+
+        // 🔁 ここを .json → .graphqls に変更
+        schemaFile.set(file("src/main/graphql/schema.graphqls"))
+
+        // 🔁 これは 3.x 系で不要（4.x で完全廃止）なので削除してもOK
+        // generateKotlinModels.set(true)
+
         customScalarsMapping.set(
-            mapOf("URI" to "kotlin.String") // ✅ スカラー型変換
+            mapOf(
+                "URI" to "kotlin.String"
+            )
         )
     }
 }
