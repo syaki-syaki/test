@@ -13,88 +13,76 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-// 💬 LINE の「トーク一覧画面」に相当する Activity
 class RepositoryListActivity : AppCompatActivity() {
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var nextPageButton: Button
+    private lateinit var prevPageButton: Button
 
-    private lateinit var recyclerView: RecyclerView // 📌 LINE の「トーク一覧」を表示する UI
-    private lateinit var nextPageButton: Button // 📌 「次のトークページ」ボタン
-    private lateinit var prevPageButton: Button // 📌 「前のトークページ」ボタン
-
-    // 💬 LINE のトーク一覧（RecyclerView に表示するリスト）
     private val repositoryAdapter = RepositoryAdapter { repository ->
-        // 💬 ユーザーがトーク（リポジトリ）をクリックしたときの処理
+        // リポジトリクリック時の処理（IssueListActivity に遷移する）
         val intent = Intent(this, IssueListActivity::class.java).apply {
-            putExtra(
-                "repositoryName",
-                "${repository.owner.login}/${repository.name}"
-            ) // 📌 トーク（リポジトリ）の情報を渡す
-            putExtra("fromActivity", "RepositoryListActivity") // 📌 どの画面から遷移したかを記録
+            putExtra("repositoryName", repository.name)
+            putExtra("username", repository.owner.login)
+            putExtra("fromActivity", "RepositoryListActivity") // 遷移元を指定
         }
-        startActivity(intent) // 📌 LINE でいうと「トーク詳細画面（チャット画面）へ移動」
+        startActivity(intent)
     }
 
-    private var currentPage = 1 // 📌 現在のページ（LINE でいう「今見ているトーク一覧のページ」）
-    private var hasNextPage = true // 📌 次のページがあるか（LINE でいう「次のトークがあるか」）
-    private lateinit var query: String // 📌 検索クエリ（トーク検索用のキーワード）
+    private var currentPage = 1 // 現在のページ番号
+    private var hasNextPage = true // 次のページが存在するか
+    private lateinit var query: String
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_repository_list) // 📌 トーク一覧のレイアウトをセット
+        setContentView(R.layout.activity_repository_list)
 
-        // 💬 画面遷移時に受け取った「トーク名（リポジトリ名）」と「検索キーワード」を取得
-        val repositoryName = intent.getStringExtra("repositoryName") ?: "" // 📌 トーク（リポジトリ）名を取得
-        val keyword = intent.getStringExtra("keyword") // 📌 検索キーワードを取得（特定のトークを検索）
+        val repositoryName = intent.getStringExtra("repositoryName") ?: ""
+        val keyword = intent.getStringExtra("keyword") // キーワードを取得
 
-        // 💬 RecyclerView（トーク一覧）をセットアップ
         recyclerView = findViewById(R.id.recyclerView)
-        recyclerView.layoutManager = LinearLayoutManager(this) // 📌 縦スクロールに設定
-        recyclerView.adapter = repositoryAdapter // 📌 RecyclerView に Adapter をセット（LINE のトーク一覧を管理）
+        recyclerView.layoutManager = LinearLayoutManager(this)
+        recyclerView.adapter = repositoryAdapter
 
-        // 💬 ページング用のボタンを取得（「次へ」「前へ」ボタン）
         nextPageButton = findViewById(R.id.nextPageButton)
         prevPageButton = findViewById(R.id.prevPageButton)
 
-        // 💬 初回のトークデータ（リポジトリ一覧）を取得
         loadRepositories(repositoryName, keyword)
 
-        // 💬 「次のページ」ボタンの処理（LINE でいう「次のトークページを開く」）
+        // 次のページボタン
         nextPageButton.setOnClickListener {
             if (hasNextPage) {
-                currentPage++ // 📌 ページを 1 つ増やす
-                loadRepositories(repositoryName, keyword) // 📌 新しいトーク一覧を取得
+                currentPage++
+                loadRepositories(repositoryName, keyword)
             } else {
-                Toast.makeText(this, "次のページはありません", Toast.LENGTH_SHORT)
-                    .show() // 📌 「次のトークページはないよ」と通知
+                Toast.makeText(this, "次のページはありません", Toast.LENGTH_SHORT).show()
             }
         }
 
-        // 💬 「前のページ」ボタンの処理（LINE でいう「前のトークページを開く」）
+        // 前のページボタン
         prevPageButton.setOnClickListener {
             if (currentPage > 1) {
-                currentPage-- // 📌 ページを 1 つ戻す
-                loadRepositories(repositoryName, keyword) // 📌 新しいトーク一覧を取得
+                currentPage--
+                loadRepositories(repositoryName, keyword)
             } else {
-                Toast.makeText(this, "前のページはありません", Toast.LENGTH_SHORT)
-                    .show() // 📌 「前のトークページはないよ」と通知
+                Toast.makeText(this, "前のページはありません", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-
-
-    // 💬 LINE の「トーク一覧を取得する処理」
-    // GitHub からリポジトリを取得する関数
-    private fun loadRepositories(username: String, keyword: String?) {
+    private fun loadRepositories(repositoryName: String, keyword: String?) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val repositories = GitHubApiService.getRepository(
+                // GitHubApiServiceにリポジトリ名とキーワードを渡して検索
+                val repositories = GitHubApiService.searchRepositoriesWithKeyword(
                     this@RepositoryListActivity,
-                    username
+                    keyword ?: "",
+                    10 // 表示するリポジトリ数を指定
                 )
+
                 withContext(Dispatchers.Main) {
                     if (repositories.isNotEmpty()) {
                         repositoryAdapter.setRepositories(repositories)
-                        hasNextPage = repositories.size == 25
+                        hasNextPage = repositories.size == 10 // 10件表示で次ページの有無を判断
                         updatePagingButtons()
                     } else {
                         Toast.makeText(
@@ -116,10 +104,9 @@ class RepositoryListActivity : AppCompatActivity() {
         }
     }
 
-
-    // ページングボタンの有効・無効を更新
-    private fun updatePagingButtons() { //㊿
-        prevPageButton.isEnabled = currentPage > 1 //㉔ ページが 1 より大きければ「前へ」ボタンを有効化
-        nextPageButton.isEnabled = hasNextPage //㉔ 次のページがあるなら「次へ」ボタンを有効化
+    private fun updatePagingButtons() {
+        // ボタンの有効/無効を更新
+        prevPageButton.isEnabled = currentPage > 1
+        nextPageButton.isEnabled = hasNextPage
     }
 }

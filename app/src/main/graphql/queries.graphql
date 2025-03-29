@@ -13,16 +13,26 @@ query GetRepositories($username: String!) {  # 🔹 `viewer` を `user` に変�
         }
     }
 }
+
+
+
+
+
+
+
+query GetViewer {
+    viewer {
+        login
+    }
+}
 query GetIssues($username: String!, $repositoryName: String!, $first: Int, $after: String) {
-    user(login: $username) {
-        repository(name: $repositoryName) {
-            issues(first: $first, after: $after) {
-                nodes {
-                    id
-                    title
-                    url
-                    body
-                }
+    repository(owner: $username, name: $repositoryName) {
+        issues(first: $first, after: $after) {
+            nodes {
+                id
+                title
+                body
+                url
             }
         }
     }
@@ -46,6 +56,7 @@ mutation CreateIssue($repositoryId: ID!, $title: String!, $body: String) {
     }
 }
 
+
 query GetUserRepositories($username: String!) {
     user(login: $username) {
         repositories(first: 10) {
@@ -61,7 +72,6 @@ query GetUserRepositories($username: String!) {
         }
     }
 }
-
 mutation UpdateIssue($id: ID!, $title: String!, $body: String) {
     updateIssue(input: { id: $id, title: $title, body: $body }) {
         issue {
@@ -88,6 +98,7 @@ query SearchRepositories($query: String!, $first: Int!, $after: String) {
                     owner {
                         login
                     }
+
                 }
             }
         }

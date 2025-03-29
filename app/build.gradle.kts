@@ -60,11 +60,11 @@ dependencies {
     implementation("com.apollographql.apollo3:apollo-runtime:3.8.2") // ✅ 最新バージョン確認
     implementation("com.apollographql.apollo3:apollo-api:3.8.2")
     implementation("com.apollographql.apollo3:apollo-normalized-cache:3.8.2")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
 
     // Gson（もし必要なら）
     implementation("com.google.code.gson:gson:2.10.1")
-    implementation("androidx.compose.foundation:foundation-android:1.7.8")
 
 
     // テスト用
